@@ -238,7 +238,7 @@ x<-archivo1[,nombres1]
 
 #
 #
-# AIC 
+# AIC -------------------------------------------------------------------------------------------
 #
 #
              
@@ -270,7 +270,7 @@ c("(Intercept)", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
              
 #
 #
-# BIC 
+# BIC -------------------------------------------------------------------------------------------
 # 
 #
              
@@ -296,7 +296,7 @@ c("(Intercept)", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
              
 #
 #
-# Boruta 
+# Boruta -----------------------------------------------------------------------------------------
 # 
 #
              
@@ -333,7 +333,7 @@ c("destination.NoUrgentPlace", "destination.UrgentPlace", "passanger.Alone",
 
 #
 #
-# MXM
+# MXM -------------------------------------------------------------------------------------------
 # 
 #
              
@@ -359,7 +359,7 @@ c("destination.NoUrgentPlace", "passanger.Friends", "maritalStatus.Single",
 
 #
 #
-# RFE Mejorado
+# RFE -------------------------------------------------------------------------------------------
 #
 #
              
@@ -395,7 +395,7 @@ c("CoffeeHouse", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
 
 #
 #
-# Step Repetido (AIC - BIC)
+# Step Repetido (AIC - BIC) -----------------------------------------------------------------------------
 # 
 #
              
@@ -437,7 +437,7 @@ c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration",
              
 #
 #
-# SBF
+# SBF -------------------------------------------------------------------------------------------
 #
 #
              
@@ -559,7 +559,7 @@ medias8<-cruzadalogistica(data=data,
 
 medias8$modelo="SBF"
 
-# Creación de boxplots
+# Creación de boxplots para comparar los ocho modelos
 union_prueba<-rbind(medias1,medias2,medias3,medias4,medias5,medias6,medias7,medias8)
 
 par(cex.axis=1, las=1)
@@ -581,10 +581,13 @@ c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration",
 
 
 # *****************************************************************************
-# ***************      TUNEO DE ALGORITMOS Y ENSAMBLADO      ******************
+# *********************      TUNEO DE ALGORITMOS     **************************
 # *****************************************************************************
 
-# Tuneo Red Neuronal
+#
+# Tuneo Red Neuronal ------------------------------------------------------------------------------------
+#
+             
 vardep<-"promotion"
 
 listconti<- c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration", 
@@ -621,14 +624,15 @@ ggplot(redavnnet$results, aes(x = factor(size), y = Accuracy, color = factor(dec
   theme(axis.text = element_text(size = 12),
         axis.title = element_text(size = 12),
         aspect.ratio = 0.8)
-
-# Tuneo Bagging (caso particular RandomForest) ----------------------------------------------------
-
+             
+#
+# Tuneo Bagging --------------------------------------------------------------------------------------
+#
+             
 # Necesario uso de semilla
 set.seed(12345)
 
-# Para mostrar el error a medida que van avanzando las iteraciones, se usa directamente el paquete
-# de randomForest
+# Para mostrar el error a medida que van avanzando las iteraciones, se usa "randomForest"
 
 rf_ba_bis <- randomForest(factor(promotion)~coupon.CarryOutTakeAway+coupon.RestaurantBelow20+
                             expiration+weather.AdverseClimatology+CoffeeHouse+destination.NoUrgentPlace+
@@ -640,8 +644,7 @@ rf_ba_bis <- randomForest(factor(promotion)~coupon.CarryOutTakeAway+coupon.Resta
 plot(rf_ba_bis$err.rate[,1])
 
 # Podemos manipular el tamaño muestral para observar su efecto sobre el modelo bagging, incorporando
-# el parámetro sampsize en la función cruzadarfbin. Esto puede permitirnos obetener un modelo
-# más optimizado.
+# el parámetro sampsize en la función cruzadarfbin. Se prueban diferentes tamaños de sampsize
 
 medias_ba_50 <- cruzadarfbin(data = archivo1, vardep = "promotion",
                             listconti =c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration", 
@@ -733,7 +736,7 @@ medias_ba_BASE <- cruzadarfbin(data = archivo1, vardep = "promotion",
 
 medias_ba_BASE$modelo = "Bagging-BASE"
 
-# Comparamos los modelos con diferentes "sampsize".
+# Comparación de modelos con diferentes "sampsize".
 
 union_modelos<-rbind(medias_ba_50, medias_ba_100, medias_ba_200, medias_ba_500, 
                      medias_ba_1000, medias_ba_3000, medias_ba_BASE)
@@ -744,14 +747,14 @@ boxplot(data=union_modelos,col="grey",tasa~modelo,main="TASA DE FALLOS")
 par(cex.axis=1.3)
 boxplot(data=union_modelos,col="grey",auc~modelo,main="AUC", cex.main = 2)
 
-
-# Observando el AUC, podemos comprobar que el mejor es "Baggin-3000".
-
+# Puede comprobarse que el que mejor funciona es el sampsize=3000.
 
 
-# Tuneo Random Forest -----------------------------------------------
 #
-# Random Forest 
+# Tuneo Random Forest -------------------------------------------------------------------------------------
+#
+             
+# Random Forest (se prueba con mtry=6 para importancia de variables)
 set.seed(12345)
 rfgrid<-expand.grid(mtry=c(6))
 
@@ -766,16 +769,12 @@ rf_todas<- train(factor(promotion)~.,data=archivo1,
 rf_todas
 
 # Importancia de variables
-
-
 final_todas <- rf_todas$finalModel
 tabla_todas <- as.data.frame(importance(final_todas))
 tabla_todas <- tabla_todas[order(-tabla_todas$MeanDecreaseAccuracy),]
 
-# Crear un vector de colores para las barras
-colores <- rep("green", nrow(tabla_todas))
 
-# Ajustar los márgenes
+colores <- rep("green", nrow(tabla_todas))
 par(mar = c(5, 20, 4, 2))
 par(cex.axis = 0.53)
 par(cex.lab = 0.53)
@@ -796,7 +795,7 @@ plot(rfbis$err.rate[,1])
 
 # Parece que las variables "time", "income" y "Bar" también son importantes para 
 # hacer randomForest. Serán incluidas al conjunto ganador, pero solamente
-# para ejecutar este modelo. Variables randomForest:
+# para ejecutar este modelo.
 
 # Segundo Tuneado sólo con las variables de interés.
 
@@ -809,6 +808,8 @@ ganadoras_RanFo <- c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "exp
 paste(ganadoras_RanFo,collapse="+")
 
 set.seed(12345)
+             
+# Ahora sí probamos diferentes valores para elegir el mejor mtry
 rfgrid <- expand.grid(mtry=c(4,5,6,7,8,9,10,11))
 
 control <- trainControl(method = "cv", number=4, savePredictions = "all",
@@ -929,11 +930,13 @@ boxplot(data=union_modelos,col="grey",tasa~modelo,main="TASA DE FALLOS")
 par(cex.axis=1.5)
 boxplot(data=union_modelos,col="grey",auc~modelo,main="AUC", cex.main = 1.8)
 
+# Ahora, el mejor sampsize es el BASE (máximo tamaño muestral)
 
-# Tuneo Gradient Boosting (Gradient boosting.R) ---------------------------------------
-
-# Gradient Boosting
-# Probamos muchas posibilidades de los parámetros para ver cuál es la que mejor funciona
+#
+# Tuneo Gradient Boosting -------------------------------------------------------------------------------------
+#
+             
+# Probamos muchas posibilidades con un grid de parámetros para ver cuál es la que mejor funciona
 
 set.seed(12345)
 
@@ -981,7 +984,7 @@ gbm<- train(factor(promotion)~coupon.CarryOutTakeAway+coupon.RestaurantBelow20+
 gbm
 plot(gbm)
 
-#  Importancia de las variables
+#  Importancia de las variables para GBM
 
 par(cex=0.5)
 summary(gbm)
@@ -991,9 +994,10 @@ par(cex = 0.7, las = 1, mar = c(7, 15, 4, 4))
 
 barplot(tabla$rel.inf,names.arg=row.names(tabla))
 
-
+#
 # Tuneo SVM --------------------------------------------------------------------------
-
+#
+             
 # Tuneo del parámetro C en SVM (LINEAL):
 
 set.seed(12345)
@@ -1029,7 +1033,6 @@ ggplot(results_df, aes(x = C, y = Accuracy, color = C)) +
   labs(x = "C", y = "Accuracy") 
 
 
-
 # SVM polinomial
 
 # Tuneo de los parámetros C y sigma en SVM (RBF)
@@ -1055,7 +1058,9 @@ ggplot(SVM_radial$results, aes(x = factor(C), y = Accuracy, color = factor(sigma
   geom_point(position = position_dodge(width = 1), size = 3)
 
 
-# Ensamblado de modelos ---------------------------------------------------------------
+# *****************************************************************************
+# *************************      ENSAMBLADO     *******************************
+# *****************************************************************************
 
 # Ya están decididos los parámetros para cada algoritmo
 
@@ -1077,9 +1082,7 @@ grupos <- 4
 sinicio <- 1234
 repe <- 15
 
-# 3. Aplicación de cruzadas para ensamblar. Obtenemos datos de CV repetida para cada
-#    algoritmo y procesmos el resultado para tener un vector de predicciones para 
-#    cada algoritmo.
+# 3. Aplicación de funciones cruzadas para ensamblar
 
 # Logística
 medias1_ens <- cruzadalogistica(data=archivo,vardep=vardep,listconti=listconti,
@@ -1166,7 +1169,7 @@ boxplot(data = union1_ens, auc~modelo, col="grey", main="AUC", cex.main = 2, cex
 unipredi <- cbind(predi1, predi2, predi3, predi4, predi5, predi6, predi7)
 unipredi <- unipredi[, !duplicated(colnames(unipredi))]
 
-# Empezamos a construir los ensamblados
+# Construcción de los ensamblados
 unipredi$predi8 <- (unipredi$logi+unipredi$avnnet)/2
 unipredi$predi9 <- (unipredi$logi+unipredi$rf)/2
 unipredi$predi10 <- (unipredi$logi+unipredi$bag)/2
@@ -1257,6 +1260,7 @@ auc<-function(x,y) {
 
 # Se obtiene el número de repeticiones de validación cruzada y se calculan las
 # medias de tasafallos y AUC por repetición en el dataframe "medias0"
+             
 repeticiones<-nlevels(factor(unipredi$Rep))
 unipredi$Rep<-as.factor(unipredi$Rep)
 unipredi$Rep<-as.numeric(unipredi$Rep)
@@ -1309,9 +1313,6 @@ par(cex.axis=1,las=2, mar = c(10, 4, 4, 2))
 boxplot(data=medias0,auc~modelo,col="green", main='AUC', cex.main = 1.8)
 
 
-# 9. Observar los mejores ensamblados con los modelos originales
-
-
 # Los 7 mejores ensamblados
 
 listadobis<-c("predi55","predi14","predi42","predi43","predi20","predi51","predi19")
@@ -1324,7 +1325,9 @@ par(cex.axis=2.3,las=2, mar = c(10, 8, 4, 2))
 boxplot(data=mediasver,auc~modelo,col="grey",main='AUC', cex.main=2.3)
 
 
-# (5) SELECCIÓN DEL MODELO Y POST ANÁLISIS -------------------------------------------------
+# *****************************************************************************
+# ****************    SELECCIÓN DEL MODELO Y POST ANÁLISIS     ****************
+# *****************************************************************************
 
 # Comparación de modelos 
 
@@ -1418,6 +1421,7 @@ medias_logi <- cruzadalogistica(data = archivo1, vardep="promotion",
 
 medias_logi$modelo = "Logística"
 
+# Para hacer pruebas, también podría probarse un sólo árbol
 medias_arb <- cruzadaarbolbin(data = archivo1, vardep="promotion",
                             listconti=c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration", 
                                         "weather.AdverseClimatology", "CoffeeHouse", "destination.NoUrgentPlace", 
@@ -1440,7 +1444,9 @@ par(cex.axis=1.8, mar = c(6,6,2,2))
 boxplot(data=union_modelos,col="green",auc~modelo,main="AUC", cex.main = 1.8)
 
 
-# Análisis y conclusiones --------------------------------------------------------------
+# *****************************************************************************
+# *******************      ANÁLISIS Y CONCLUSIONES     ************************
+# *****************************************************************************
 
 # Evaluación del modelo
 
@@ -1468,11 +1474,10 @@ modelo_rf_final <- train(factor(promotion)~coupon.CarryOutTakeAway+coupon.Restau
                          importance=TRUE)
 
 modelo_rf_final
-
 sal_modelo_rf_final <- modelo_rf_final$pred
 
 
-##### Matriz de confusión #####
+# Matriz de confusión
 
 # Medidas con punto de corte 0.5
 confusionMatrix(reference = sal_modelo_rf_final$obs, data = sal_modelo_rf_final$pred, positive = "Yes")
@@ -1493,7 +1498,7 @@ sal_modelo_rf_final$predcorte <- as.factor(sal_modelo_rf_final$predcorte)
 confusionMatrix(reference = sal_modelo_rf_final$obs, data = sal_modelo_rf_final$predcorte, positive = "Yes")
 
 
-##### Curva ROC #####
+# Curva ROC
 
 curvaroc_modelo_rf_final <- roc(response = sal_modelo_rf_final$obs, predictor = sal_modelo_rf_final$Yes)
 
@@ -1504,7 +1509,7 @@ plot(roc(response = sal_modelo_rf_final$obs, predictor = sal_modelo_rf_final$Yes
 
 
 
-##### Tabla parámetros logística #####
+########## Tabla parámetros logística ##########
 
 control_logi_final <- trainControl(method = "none", savePredictions = "all", classProbs = TRUE)
 
