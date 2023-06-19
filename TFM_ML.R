@@ -1,7 +1,9 @@
 
 # PREDICCIÓN VARIABLE BINARIA (ACEPTACIÓN O RECHAZO DE UNA PROMOCIÓN DE DESCUENTO)
 
-# Librerías necesarias
+# *****************************************************************************
+# *****************      LIBRERÍAS NECESARIAS      ****************************
+# *****************************************************************************
 
 library(readxl)
 library(tidyverse)
@@ -16,25 +18,38 @@ library(plyr)
 library(parallel)
 library(doParallel)
 
-# Importación fichero de datos
+# Iniciar paralelización (si fuese necesario)
 
+clusters <- detectCores() - 1
+make_cluster <- makeCluster(clusters)
+registerDoParallel(make_cluster)
+showConnections()
+
+# stopCluster(make_cluster)
+# registerDoSEQ()
+
+# *****************************************************************************
+# *******************      FICHERO DE DATOS      ******************************
+# *****************************************************************************
+
+# Importación del fichero
 ivcr_dataset <- read_excel("./Dataset_Dummies_Final.xlsx")
 
-# Cambiamos la variable objetivo ("Y") a Yes, NO
+# Cambiamos la variable objetivo ("Y") a Yes (acepta), N (rechaza)
 ivcr_dataset$Y<-ifelse(ivcr_dataset$Y==1,"Yes","No")
 
-# Para evitar posibles problemas, renombramos "Y" como "promotion". Es la variable
-# objetivo e indica (0, si la promoción no ha sido aceptada), o (1, si la promoción
-# ha sido aceptada).
+# Para evitar posibles problemas, renombramos "Y" como "promotion"
 colnames(ivcr_dataset)[colnames(ivcr_dataset) == "Y"] <- "promotion"
 
-# Archivo de datos -> ponerlo como data frame
+# Archivo de datos como DataFrame
 ivcr_dataset <- as.data.frame(ivcr_dataset)
 
 
-# (1) COMPROBACIONES ----------------------------------------------------------
+# *****************************************************************************
+# ***************      COMPROBACIONES INICIALES      **************************
+# *****************************************************************************
 
-# Comprobamos que no hay valores ausentes
+# Comprobamos de nuevo que no hay valores ausentes
 colSums(is.na(ivcr_dataset))
 
 # Frecuencias de las variables categóricas
@@ -43,24 +58,21 @@ names(frecu)<-c("variable","nivel","frecuencia")
 frecu$frecuencia<-as.numeric(frecu$frecuencia)
 frecu
 
-# No hay problemas con el número de observaciones por categoría (el que menos
-# tiene son 88 observaciones). Si hubiese alguna categoría casi sin observaciones,
-# normalmente es mejor eliminarla.
+# No hay problemas con el número de observaciones por categoría.
 
 
+# *****************************************************************************
+# ***************      CHEQUEO INTUITIVO INICIAL      *************************
+# *****************************************************************************
 
-# (2) CHEQUEO INTUITIVO INICIAL -----------------------------------------------
-
-# Se van a comparar un modelo logístico con uno de RandomForest, para hacer
-# un chequeo intuitivo inicial y hacernos una idea sobre qué modelos funcionarán
-# mejor para nuestro conjunto de datos. A priori, teniendo en cuenta que todas las
-# variables son categóricas, funcionarán mejor los métodos basados en árboles, 
-# aunque realizamos los siguientes pasos para comprobarlo.
+# Se van a comparar un modelo logístico con uno de RandomForest, para hacerse una
+# idea sobre qué modelos podrían funcionar mejor para nuestro conjunto de datos.
+# A priori, teniendo en cuenta que todas las variables son categóricas, funcionarán
+# mejor los métodos basados en árboles, aunque realizamos los siguientes pasos para
+# comprobarlo.
 
 # Modelo logístico con variables obtenidas con stepwise básico. Se realiza con las
-# variables más importantes según el criterio stepAIC. Se hace así con el objetivo
-# de seleccionar un subconjunto de variables explicativas que proporcionen un buen
-# ajuste al modelo y eviten la inclusión de variables irrelevantes.
+# variables más importantes según el criterio stepAIC.
 
 # Modelo logístico -------------------------------------------------
 
@@ -75,7 +87,7 @@ c("(Intercept)", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
 control_pr<-trainControl(method = "LGOCV",p=0.8,number=1,
                       classProbs=TRUE,savePredictions = "all") 
 
-logi_pr<- train(promotion~coupon.CarryOutTakeAway+coupon.RestaurantBelow20+expiration
+logi_pr <- train(promotion~coupon.CarryOutTakeAway+coupon.RestaurantBelow20+expiration
 +destination.UrgentPlace+CoffeeHouse+weather.AdverseClimatology+passanger.Kids+
 education+direction_same+coupon.Bar+Restaurant20To50+gender+occupation.Retired+
 maritalStatus.Single+passanger.Alone+coupon.CoffeeHouse+age+occupation.Employee+
@@ -150,16 +162,6 @@ plot(roc(response=sal$obs,predictor=sal$Yes))
 
 # Random Forest Sin Tunear -------------------------------------------
 
-# Iniciar paralelización
-
-clusters <- detectCores() - 1
-make_cluster <- makeCluster(clusters)
-registerDoParallel(make_cluster)
-showConnections()
-
-stopCluster(make_cluster)
-registerDoSEQ()
-
 # Random Forest sin tunear
 control_rf_inicial <- trainControl(method = "cv", number=4, savePredictions = "all", 
                                    classProbs = TRUE)
@@ -173,13 +175,11 @@ modelo_rf_inicial
 sal_modelo_rf_inicial <- modelo_rf_inicial$pred
 
 
-##### Matriz de confusión #####
-
-# Medidas con punto de corte 0.5
+# Matriz de confusión 
 confusionMatrix(reference = sal_modelo_rf_inicial$obs, data = sal_modelo_rf_inicial$pred,
                 positive = "Yes")
 
-##### Curva ROC #####
+# Curva ROC
 
 curvaroc_modelo_rf_inicial <- roc(response = sal_modelo_rf_inicial$obs,
                                   predictor = sal_modelo_rf_inicial$Yes)
@@ -198,19 +198,19 @@ barplot(tabla_pr$MeanDecreaseAccuracy, names.arg = rownames(tabla_pr))
 # Diferencia de accuracy = (RandomForest: 0.7412) - (ModeloLogístico: 0.6809) = 0.0603
 
 # Observaciones de acurracy correspondientes a la diferencia de algoritmos: 
-
-#       0.0603 * 12610 (observaciones) = 760 observaciones de diferencia
+# 0.0603 * 12610 (observaciones) = 760 observaciones de diferencia
 
 # Comparando Random Forest con el modelo logístico, vemos que el Random Forest
 # tiene un Accuracy notablemente más elevado que la Regresión Logística. Esto
 # parece indicar que merecerá la pena un algorirmo complejo con separación no
 # lineal. Merecerá la pena explorar algoritmos de separación no lineal para 
-# obtener mejores resultados de predicción.
-# No hay problemas en cuanto a pocas observaciones "Yes".
-# Presumiblemente, el Random Forest será de los mejores modelos.
+# obtener mejores resultados de predicción.No hay problemas en cuanto a pocas
+# observaciones "Yes".
 
 
-# (3) Selección de variables -----------------------------------------------------
+# *****************************************************************************
+# ****************      SELECCIÓN DE VARIABLES      ***************************
+# *****************************************************************************
 
 source("funcion steprepetido binaria.R")
 
@@ -236,10 +236,12 @@ x<-archivo1[,nombres1]
 
 # Comenzamos a probar los diferentes modelos de selección de variables
 
-
-# AIC ------------------------------------------------------------------------------------------------------------
 #
-
+#
+# AIC 
+#
+#
+             
 # Convertimos los valores de archivo1 de "Yes" y "No" a "1" y "0" para que funcione
 # este método de selección de variables.
 archivo1 <- archivo1 |>   mutate(promotion = ifelse(promotion == "Yes", 1,0))
@@ -265,9 +267,13 @@ c("(Intercept)", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
   "Restaurant20To50", "gender", "occupation.Retired", "maritalStatus.Single", 
   "passanger.Alone", "coupon.CoffeeHouse", "age", "occupation.Employee", 
   "maritalStatus.Divorced", "income")
-
-# BIC ------------------------------------------------------------------------------------------------------------
+             
+#
+#
+# BIC 
 # 
+#
+             
 # k=log(n), n=12610, k=9.
 
 full<-glm(promotion~.,data=archivo1,family = binomial(link="logit"))
@@ -287,11 +293,13 @@ c("(Intercept)", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
   "expiration", "destination.UrgentPlace", "CoffeeHouse", "weather.AdverseClimatology", 
   "passanger.Kids", "education", "direction_same", "coupon.Bar", 
   "Restaurant20To50", "gender", "occupation.Retired", "maritalStatus.Single")
-
-
-# Boruta ------------------------------------------------------------------------------------------------------------
+             
+#
+#
+# Boruta 
 # 
-
+#
+             
 library(Boruta)
 out.boruta <- Boruta(promotion~., data = archivo1)
 
@@ -323,9 +331,12 @@ c("destination.NoUrgentPlace", "destination.UrgentPlace", "passanger.Alone",
   "income", "Bar", "CoffeeHouse", "CarryAway", "RestaurantLessThan20", 
   "Restaurant20To50", "direction_same", "time_toCoupon")
 
-# MXM ------------------------------------------------------------------------------------------------------------
+#
+#
+# MXM
 # 
-
+#
+             
 library(MXM)
 
 mmpc2 <- MMPC(vardep, archivo1, max_k = 3, hash = TRUE, test = "testIndLogistic")
@@ -346,21 +357,19 @@ c("destination.NoUrgentPlace", "passanger.Friends", "maritalStatus.Single",
   "Bar", "CoffeeHouse", "Restaurant20To50", "time_toCoupon")
 
 
-
-
-# RFE Mejorado ---------------------------------------------------------------------------------------------------
 #
+#
+# RFE Mejorado
+#
+#
+             
 # ("promotion" debe aparecer de nuevo como num (1 y 0). También para SBF.
 
 source("cruzadas avnnet y log binaria.R")
+             
 archivo1$promotion<-as.factor(archivo1$promotion)
 
-clusters <- detectCores() - 1
-make_cluster <- makeCluster(clusters)
-registerDoParallel(make_cluster)
-showConnections()
-
-# RFE mejorado
+# RFE
 control <- rfeControl(functions=rfFuncs, method="cv", number=2)
 
 # run the RFE algorithm
@@ -384,13 +393,13 @@ c("CoffeeHouse", "coupon.CarryOutTakeAway", "coupon.RestaurantBelow20",
   "CarryAway", "gender", "age", "has_children", "destination.NoUrgentPlace", 
   "temperature")
 
-
-
-# Step Repetido (AIC - BIC) ------------------------------------------------------------------------------------------------------------
+#
+#
+# Step Repetido (AIC - BIC)
 # 
-
+#
+             
 archivo1$promotion<-ifelse(archivo1$promotion==1,"Yes","No")
-
 
 # StepRepetido con AIC
 lista<-steprepetidobinaria(data=archivo1,vardep=c("promotion"),
@@ -410,7 +419,6 @@ c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration",
   "coupon.CoffeeHouse", "passanger.Alone", "occupation.Employee", 
   "age")
 
-
 # StepRepetido con BIC
 lista2<-steprepetidobinaria(data=archivo1,vardep=c("promotion"),
                            listconti=nombres1,
@@ -426,10 +434,13 @@ c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration",
   "destination.NoUrgentPlace", "weather.AdverseClimatology", "CoffeeHouse", 
   "passanger.Kids", "education", "direction_same", "coupon.Bar", 
   "gender", "Restaurant20To50", "occupation.Retired")
-
-
-# SBF ------------------------------------------------------------------------------------
+             
 #
+#
+# SBF
+#
+#
+             
 filtro<-sbf(x,y,sbfControl = sbfControl(functions = rfSBF,
                                         method = "cv", verbose = FALSE))
 
@@ -449,8 +460,8 @@ c("destination.NoUrgentPlace", "destination.UrgentPlace", "passanger.Alone",
   "Bar", "CoffeeHouse", "CarryAway", "RestaurantLessThan20", "Restaurant20To50", 
   "time_toCoupon")
 
-# Comparación conjuntos de variables -----------------------------------------------------------------------------------------
-
+             
+# COMPARACIÓN DE CONJUNTOS MEDIANTE REGRESIÓN LOGÍSTICA
 
 # Ponemos las variables que han sido seleccionadas por cada modelo. 
 # Se incluyen todas en "listconti".
@@ -548,22 +559,17 @@ medias8<-cruzadalogistica(data=data,
 
 medias8$modelo="SBF"
 
-
-  
-  
-  
 # Creación de boxplots
 union_prueba<-rbind(medias1,medias2,medias3,medias4,medias5,medias6,medias7,medias8)
 
 par(cex.axis=1, las=1)
 boxplot(data=union_prueba,col="grey",tasa~modelo,main="TASA DE FALLOS")
 
-
 par(cex.axis=1)
 boxplot(data=union_prueba,col="grey",auc~modelo,main="AUC")
 
 
-# El mejor set de variables es el siguiente (del STEPrep1)
+# El mejor set de variables es el del STEPrep1
 c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration", 
   "weather.AdverseClimatology", "CoffeeHouse", "destination.NoUrgentPlace", 
   "passanger.Kids", "coupon.Bar", "direction_same", "education", 
@@ -574,9 +580,9 @@ c("coupon.CarryOutTakeAway", "coupon.RestaurantBelow20", "expiration",
 
 
 
-# (4) TUNEO DE ALGORITMOS Y ENSAMBLADO ----------------------------------------------
-
-# Tuneo Redes Simple ---------------------------------------------------------------------
+# *****************************************************************************
+# ***************      TUNEO DE ALGORITMOS Y ENSAMBLADO      ******************
+# *****************************************************************************
 
 # Tuneo Red Neuronal
 vardep<-"promotion"
