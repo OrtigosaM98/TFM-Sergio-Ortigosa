@@ -938,12 +938,9 @@ ivcr_dataset <- ivcr_dataset |>
 
 # CoffeeHouse (imputación modal realizada)
 
-
 # CarryAway (imputación modal realizada)
 
-
 # RestaurantLessThan20 (imputación modal realizada)
-
 
 # Restaurant20To50 (imputación modal realizada)
 
@@ -955,8 +952,7 @@ ivcr_dataset <- ivcr_dataset |>
 
 # time_toCoupon (creada)
 
-# direction_same (eliminar)
-# ivcr_dataset <- ivcr_dataset |>  select(-direction_same)
+# direction_same (sin modificaciones)
 
 # direction_opp (eliminada)
 
@@ -971,8 +967,6 @@ write.xlsx(ivcr_dataset, "INTRODUCIR_RUTA_PARA_GUARDAR_ARCHIVO", sheetName = "Ho
 
 # Cuando se genere el archivo, asegurarse de que se llama "Dataset_Cod_Python.xlsx".
 
-# Ahora, se debe seguir trabajando en Python con el archivo "Codificación_numérica.ipynb"
-
+# Ahora, seguir trabajando en Python con el archivo "Codificación_numérica.ipynb"
 #
 #
-
