@@ -10,6 +10,9 @@
 
 (4) Machine_Learning.R
 
+
+
+
 ##### TFM_Inicio.R 
 incluye la importación del archivo orginal, depuración, análisis exploratorio, y modificaciones iniciales.
 
