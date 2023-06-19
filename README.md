@@ -1,7 +1,7 @@
-# IMPORTANTE LEER ESTE ARCHIVO ANTES DE EJECUTAR LOS ARCHIVOS DE CÓDIGO
+#### IMPORTANTE LEER ESTE ARCHIVO ANTES DE EJECUTAR LOS ARCHIVOS DE CÓDIGO
 
 ***********************************
-# ORDEN DE EJECUCIÓN DE LOS ARCHIVOS
+#### ORDEN DE EJECUCIÓN DE LOS ARCHIVOS
 ***********************************
 
 (1) TFM_Inicio.R (archivo R)
@@ -12,15 +12,15 @@
 
 (4) Machine_Learning.R (archivo R)
 
-# TFM_Inicio.R 
+##### TFM_Inicio.R 
 incluye la importación del archivo orginal, depuración, análisis exploratorio, y modificaciones iniciales.
 
-# Codificación_numérica.ipynb
+##### Codificación_numérica.ipynb
 incluye las técnicas de label encoding y one-hot encoding.
 
-# Renombrar_variables.ipynb
+##### Renombrar_variables.ipynb
 incluye la eliminación de espacios y caracteres especiales en las variables para evitar problemas futuros.
 
-# Machine_Learning.R
+##### Machine_Learning.R
 incluye la preparación final del fichero de datos adaptado a las funciones que van a utilizarse y el desarrollo
 y evaluación de los modelos de Machine Learning.
