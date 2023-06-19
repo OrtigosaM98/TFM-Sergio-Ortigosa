@@ -2,13 +2,13 @@
 #### ORDEN DE EJECUCIÓN DE LOS ARCHIVOS
 ***********************************
 
-(1) TFM_Inicio.R (archivo R)
+(1) TFM_Inicio.R
 
-(2) Codificación_numérica.ipynb (archivo Python)
+(2) Codificación_numérica.ipynb
 
-(3) Renombrar_variables.ipynb (archivo Python)
+(3) Renombrar_variables.ipynb
 
-(4) Machine_Learning.R (archivo R)
+(4) Machine_Learning.R
 
 ##### TFM_Inicio.R 
 incluye la importación del archivo orginal, depuración, análisis exploratorio, y modificaciones iniciales.
