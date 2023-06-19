@@ -1,5 +1,3 @@
-#### IMPORTANTE LEER ESTE ARCHIVO ANTES DE EJECUTAR LOS ARCHIVOS DE CÓDIGO
-
 ***********************************
 #### ORDEN DE EJECUCIÓN DE LOS ARCHIVOS
 ***********************************
