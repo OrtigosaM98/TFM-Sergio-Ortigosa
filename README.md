@@ -18,7 +18,7 @@ incluye la importación del archivo orginal, depuración, análisis exploratorio
 #
 
 ##### Codificación_numérica.ipynb
-incluye las técnicas de label encoding y one-hot encoding.
+incluye las técnicas label encoding y one-hot encoding.
 
 #
 
